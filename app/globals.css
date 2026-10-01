@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Work+Sans:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Work Sans', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #FBF7F5;
+  color: #1B1516;
+}
+
+.placeholder-block {
+  background: linear-gradient(135deg, #F1DCE2 0%, #EDE6DF 55%, #F1DCE2 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.placeholder-block::after {
+  content: attr(data-label);
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #7A0E3B;
+  opacity: 0.55;
+}
