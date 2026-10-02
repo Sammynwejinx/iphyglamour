@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import ProductGallery from '@/components/ProductGallery';
 import AddToCartForm from '@/components/AddToCartForm';
 import { getProductBySlug } from '@/lib/products';
+export const dynamic = 'force-dynamic';
 import { formatNaira } from '@/lib/placeholderProducts';
 
 export default async function ProductPage({ params }) {

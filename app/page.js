@@ -3,6 +3,7 @@ import Image from 'next/image';
 import ImagePlaceholder from '@/components/ImagePlaceholder';
 import ProductCard from '@/components/ProductCard';
 import { getAllProducts } from '@/lib/products';
+export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const products = await getAllProducts();
