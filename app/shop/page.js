@@ -1,8 +1,8 @@
 import ShopGrid from '@/components/ShopGrid';
 import { getAllProducts } from '@/lib/products';
+export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Shop — IPHYGLAMOUR' };
-export const dynamic = 'force-dynamic';
 
 export default async function ShopPage() {
   const products = await getAllProducts();
