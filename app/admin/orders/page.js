@@ -6,13 +6,15 @@ import { formatNaira } from '@/lib/placeholderProducts';
 
 const STATUSES = [
   'New Order',
+  'Payment Pending',
+  'Payment Confirmed',
   'Awaiting Measurements',
   'Measurement Received',
   'Appointment Requested',
-  'Measurements Confirmed',
   'In Production',
   'Ready',
-  'Completed'
+  'Shipped',
+  'Delivered'
 ];
 
 export default function AdminOrdersPage() {

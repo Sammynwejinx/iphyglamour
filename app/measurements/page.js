@@ -13,6 +13,7 @@ export default function MeasurementsPage() {
   const measurementFields = fieldsForCartItems(items);
 
   const [path, setPath] = useState(null); // 'measurements' | 'appointment' | 'whatsapp'
+  const [measurementStep, setMeasurementStep] = useState('form'); // 'form' | 'details'
   const [apptType, setApptType] = useState(null); // 'home' | 'shop'
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
@@ -20,6 +21,15 @@ export default function MeasurementsPage() {
 
   const [measurements, setMeasurements] = useState({});
   const [appointment, setAppointment] = useState({ address: '', preferred_date: '', preferred_time: '', notes: '' });
+  const [shipping, setShipping] = useState({
+    email: '',
+    country: '',
+    state: '',
+    city: '',
+    address: '',
+    postalCode: '',
+    notes: ''
+  });
 
   if (items.length === 0) {
     return (
@@ -33,10 +43,29 @@ export default function MeasurementsPage() {
     );
   }
 
+  function continueToDetails(e) {
+    e.preventDefault();
+    setMeasurementStep('details');
+  }
+
   async function finishWithMeasurements(e) {
     e.preventDefault();
     setSubmitting(true);
-    const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'measurement_received' });
+    const orderNumber = await createOrder({
+      items,
+      total,
+      customerName,
+      phone,
+      measurementStatus: 'measurement_received',
+      email: shipping.email,
+      country: shipping.country,
+      state: shipping.state,
+      city: shipping.city,
+      address: shipping.address,
+      postalCode: shipping.postalCode,
+      shippingNotes: shipping.notes,
+      status: 'Payment Pending'
+    });
     await saveMeasurements(orderNumber, measurements);
     clearCart();
     router.push(`/order-confirmation?order=${orderNumber}&status=measurement_received`);
@@ -99,9 +128,13 @@ export default function MeasurementsPage() {
         </div>
       )}
 
-      {path === 'measurements' && (
-        <form onSubmit={finishWithMeasurements} className="mt-2">
-          <button type="button" onClick={() => setPath(null)} className="text-xs text-ink/50 mb-6 hover:text-magenta">
+      {path === 'measurements' && measurementStep === 'form' && (
+        <form onSubmit={continueToDetails} className="mt-2">
+          <button
+            type="button"
+            onClick={() => setPath(null)}
+            className="text-xs text-ink/50 mb-6 hover:text-magenta"
+          >
             ← Back
           </button>
           <div className="grid gap-4 mb-6">
@@ -141,6 +174,82 @@ export default function MeasurementsPage() {
             className="border border-sand px-3 py-2 text-sm w-full mb-6"
             rows={3}
           />
+          <button className="bg-ink text-porcelain px-6 py-3 text-sm hover:bg-magenta transition-colors">
+            Continue
+          </button>
+        </form>
+      )}
+
+      {path === 'measurements' && measurementStep === 'details' && (
+        <form onSubmit={finishWithMeasurements} className="mt-2">
+          <button
+            type="button"
+            onClick={() => setMeasurementStep('form')}
+            className="text-xs text-ink/50 mb-6 hover:text-magenta"
+          >
+            ← Back to measurements
+          </button>
+          <h2 className="font-display text-xl text-ink mb-1">Your details</h2>
+          <p className="text-ink/60 text-sm mb-6">So we know where to send your order.</p>
+          <div className="grid gap-4 mb-6">
+            <input
+              required
+              type="email"
+              placeholder="Email address"
+              value={shipping.email}
+              onChange={(e) => setShipping((s) => ({ ...s, email: e.target.value }))}
+              className="border border-sand px-3 py-2 text-sm"
+            />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <input
+                required
+                placeholder="Country"
+                value={shipping.country}
+                onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+              <input
+                required
+                placeholder="State / Province"
+                value={shipping.state}
+                onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <input
+                required
+                placeholder="City"
+                value={shipping.city}
+                onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+              <input
+                placeholder="Postal / ZIP code"
+                value={shipping.postalCode}
+                onChange={(e) => setShipping((s) => ({ ...s, postalCode: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+            </div>
+            <textarea
+              required
+              placeholder="Full delivery address"
+              value={shipping.address}
+              onChange={(e) => setShipping((s) => ({ ...s, address: e.target.value }))}
+              className="border border-sand px-3 py-2 text-sm"
+              rows={2}
+            />
+            <textarea
+              placeholder="Delivery notes (optional)"
+              value={shipping.notes}
+              onChange={(e) => setShipping((s) => ({ ...s, notes: e.target.value }))}
+              className="border border-sand px-3 py-2 text-sm"
+              rows={2}
+            />
+          </div>
+          <p className="text-xs text-ink/50 mb-4">
+            Payment is handled directly with IPHYGLAMOUR — you&apos;ll be contacted with payment details shortly.
+          </p>
           <button
             disabled={submitting}
             className="bg-ink text-porcelain px-6 py-3 text-sm hover:bg-magenta transition-colors disabled:opacity-50"
