@@ -7,6 +7,8 @@ import { formatNaira } from '@/lib/placeholderProducts';
 import { createOrder, saveMeasurements, saveAppointment } from '@/lib/orders';
 import { fieldsForCartItems } from '@/lib/measurementFields';
 
+const DELIVERY_FEE = 15000;
+
 export default function MeasurementsPage() {
   const { items, total, clearCart } = useCart();
   const router = useRouter();
@@ -18,6 +20,7 @@ export default function MeasurementsPage() {
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState(null);
 
   const [measurements, setMeasurements] = useState({});
   const [appointment, setAppointment] = useState({ address: '', preferred_date: '', preferred_time: '', notes: '' });
@@ -51,56 +54,83 @@ export default function MeasurementsPage() {
   async function finishWithMeasurements(e) {
     e.preventDefault();
     setSubmitting(true);
-    const orderNumber = await createOrder({
-      items,
-      total,
-      customerName,
-      phone,
-      measurementStatus: 'measurement_received',
-      email: shipping.email,
-      country: shipping.country,
-      state: shipping.state,
-      city: shipping.city,
-      address: shipping.address,
-      postalCode: shipping.postalCode,
-      shippingNotes: shipping.notes,
-      status: 'Payment Pending'
-    });
-    await saveMeasurements(orderNumber, measurements);
-    clearCart();
-    router.push(`/order-confirmation?order=${orderNumber}&status=measurement_received`);
+    setOrderError(null);
+    const subtotal = total;
+    const grandTotal = subtotal + DELIVERY_FEE;
+    try {
+      const orderNumber = await createOrder({
+        items,
+        total: grandTotal,
+        subtotal,
+        deliveryFee: DELIVERY_FEE,
+        customerName,
+        phone,
+        measurementStatus: 'measurement_received',
+        email: shipping.email,
+        country: shipping.country,
+        state: shipping.state,
+        city: shipping.city,
+        address: shipping.address,
+        postalCode: shipping.postalCode,
+        shippingNotes: shipping.notes
+      });
+      await saveMeasurements(orderNumber, measurements);
+      clearCart();
+      router.push(
+        `/order-confirmation?order=${orderNumber}&status=measurement_received&subtotal=${subtotal}&fee=${DELIVERY_FEE}&total=${grandTotal}`
+      );
+    } catch (err) {
+      setSubmitting(false);
+      setOrderError('Something went wrong saving your order. Please check your connection and try again.');
+    }
   }
 
   async function finishWithAppointment(e) {
     e.preventDefault();
     setSubmitting(true);
-    const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'appointment_requested' });
-    await saveAppointment(orderNumber, { type: apptType, customer_name: customerName, phone, ...appointment });
-    clearCart();
-    router.push(`/order-confirmation?order=${orderNumber}&status=appointment_requested`);
+    setOrderError(null);
+    try {
+      const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'appointment_requested' });
+      await saveAppointment(orderNumber, { type: apptType, customer_name: customerName, phone, ...appointment });
+      clearCart();
+      router.push(`/order-confirmation?order=${orderNumber}&status=appointment_requested`);
+    } catch (err) {
+      setSubmitting(false);
+      setOrderError('Something went wrong saving your request. Please try again.');
+    }
   }
 
   async function finishWithWhatsApp() {
     setSubmitting(true);
-    const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'chat_pending' });
-    const number = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2340000000000';
-    const lines = [
-      `Hello IPHYGLAMOUR, I just placed an order.`,
-      `Order #: ${orderNumber}`,
-      ...items.map((i) => `${i.name} x${i.quantity} — ${formatNaira(i.price * i.quantity)}`),
-      `Total: ${formatNaira(total)}`,
-      `I would like to discuss my measurements.`
-    ];
-    const url = `https://wa.me/${number}?text=${encodeURIComponent(lines.join('\n'))}`;
-    clearCart();
-    window.open(url, '_blank');
-    router.push(`/order-confirmation?order=${orderNumber}&status=chat_pending`);
+    setOrderError(null);
+    try {
+      const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'chat_pending' });
+      const number = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2340000000000';
+      const lines = [
+        `Hello IPHYGLAMOUR, I just placed an order.`,
+        `Order #: ${orderNumber}`,
+        ...items.map((i) => `${i.name} x${i.quantity} — ${formatNaira(i.price * i.quantity)}`),
+        `Total: ${formatNaira(total)}`,
+        `I would like to discuss my measurements.`
+      ];
+      const url = `https://wa.me/${number}?text=${encodeURIComponent(lines.join('\n'))}`;
+      clearCart();
+      window.open(url, '_blank');
+      router.push(`/order-confirmation?order=${orderNumber}&status=chat_pending`);
+    } catch (err) {
+      setSubmitting(false);
+      setOrderError('Something went wrong. Please try again.');
+    }
   }
 
   return (
     <div className="max-w-2xl mx-auto px-5 py-10 md:py-14">
       <h1 className="font-display text-3xl text-ink mb-2">How would you like to provide your measurements?</h1>
       <p className="text-ink/60 text-sm mb-8">Order total: {formatNaira(total)}</p>
+
+      {orderError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 mb-6">{orderError}</div>
+      )}
 
       {!path && (
         <div className="grid gap-4">
@@ -130,11 +160,7 @@ export default function MeasurementsPage() {
 
       {path === 'measurements' && measurementStep === 'form' && (
         <form onSubmit={continueToDetails} className="mt-2">
-          <button
-            type="button"
-            onClick={() => setPath(null)}
-            className="text-xs text-ink/50 mb-6 hover:text-magenta"
-          >
+          <button type="button" onClick={() => setPath(null)} className="text-xs text-ink/50 mb-6 hover:text-magenta">
             ← Back
           </button>
           <div className="grid gap-4 mb-6">
@@ -247,8 +273,24 @@ export default function MeasurementsPage() {
               rows={2}
             />
           </div>
+
+          <div className="border border-sand p-4 mb-6 text-sm">
+            <div className="flex justify-between py-1">
+              <span className="text-ink/60">Subtotal</span>
+              <span className="text-ink">{formatNaira(total)}</span>
+            </div>
+            <div className="flex justify-between py-1">
+              <span className="text-ink/60">Delivery fee</span>
+              <span className="text-ink">{formatNaira(DELIVERY_FEE)}</span>
+            </div>
+            <div className="flex justify-between py-2 border-t border-sand mt-1 font-display">
+              <span>Total</span>
+              <span>{formatNaira(total + DELIVERY_FEE)}</span>
+            </div>
+          </div>
+
           <p className="text-xs text-ink/50 mb-4">
-            Payment is handled directly with IPHYGLAMOUR — you&apos;ll be contacted with payment details shortly.
+            Payment is by bank transfer — you&apos;ll see the account details on the next page.
           </p>
           <button
             disabled={submitting}
