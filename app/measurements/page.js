@@ -75,6 +75,19 @@ export default function MeasurementsPage() {
         shippingNotes: shipping.notes
       });
       await saveMeasurements(orderNumber, measurements);
+      fetch('/api/send-order-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderNumber,
+          customerName,
+          email: shipping.email,
+          items,
+          subtotal,
+          deliveryFee: DELIVERY_FEE,
+          total: grandTotal
+        })
+      }).catch(() => {});
       clearCart();
       router.push(
         `/order-confirmation?order=${orderNumber}&status=measurement_received&subtotal=${subtotal}&fee=${DELIVERY_FEE}&total=${grandTotal}`

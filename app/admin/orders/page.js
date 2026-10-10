@@ -19,16 +19,20 @@ export default function AdminOrdersPage() {
     load();
   }, []);
 
-  async function confirmPayment(order) {
+  
+    async function confirmPayment(order) {
     const sure = window.confirm(
       `Have you personally checked your Access Bank account and confirmed ${formatNaira(order.total)} has actually arrived for order ${order.order_number}?`
     );
     if (!sure) return;
     setBusyId(order.id);
-    await supabase
+    const { error } = await supabase
       .from('orders')
       .update({ payment_status: 'Confirmed', updated_at: new Date().toISOString() })
       .eq('id', order.id);
+    if (error) {
+      alert('Could not confirm payment: ' + error.message);
+    }
     await load();
     setBusyId(null);
   }
