@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cartContext';
 import { formatNaira } from '@/lib/placeholderProducts';
 import { createOrder, saveMeasurements, saveAppointment } from '@/lib/orders';
-import { fieldsForCartItems } from '@/lib/measurementFields';
+import { sectionsForItem } from '@/lib/measurementFields';
 
 const DELIVERY_FEE = 15000;
 
 export default function MeasurementsPage() {
   const { items, total, clearCart } = useCart();
   const router = useRouter();
-  const measurementFields = fieldsForCartItems(items);
 
   const [path, setPath] = useState(null); // 'measurements' | 'appointment' | 'whatsapp'
   const [measurementStep, setMeasurementStep] = useState('form'); // 'form' | 'details'
@@ -22,7 +21,8 @@ export default function MeasurementsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orderError, setOrderError] = useState(null);
 
-  const [measurements, setMeasurements] = useState({});
+  const [itemValues, setItemValues] = useState({}); // { [productId]: { [measurementKey]: value } }
+  const [notes, setNotes] = useState('');
   const [appointment, setAppointment] = useState({ address: '', preferred_date: '', preferred_time: '', notes: '' });
   const [shipping, setShipping] = useState({
     email: '',
@@ -74,7 +74,16 @@ export default function MeasurementsPage() {
         postalCode: shipping.postalCode,
         shippingNotes: shipping.notes
       });
-      await saveMeasurements(orderNumber, measurements);
+      await saveMeasurements(orderNumber, {
+        notes,
+        items: items.map((i) => ({
+          product_id: i.id,
+          name: i.name,
+          type: sectionsForItem(i).typeId,
+          quantity: i.quantity,
+          values: itemValues[i.id] || {}
+        }))
+      });
       fetch('/api/send-order-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -192,24 +201,46 @@ export default function MeasurementsPage() {
               className="border border-sand px-3 py-2 text-sm"
             />
           </div>
-          <div className="grid sm:grid-cols-2 gap-4 mb-6">
-            {measurementFields.map((f) => (
-              <div key={f.key}>
-                <label className="text-xs text-ink/60 block mb-1">{f.label}</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={measurements[f.key] || ''}
-                  onChange={(e) => setMeasurements((m) => ({ ...m, [f.key]: e.target.value }))}
-                  className="border border-sand px-3 py-2 text-sm w-full"
-                />
+          <p className="text-xs text-ink/50 mb-4">All measurements are in inches.</p>
+          {items.map((item) => {
+            const { typeName, sections } = sectionsForItem(item);
+            return (
+              <div key={item.id} className="border border-sand p-4 mb-6">
+                <p className="font-display text-lg text-ink">{item.name}</p>
+                <p className="text-xs text-ink/50 mb-4">
+                  {typeName} measurements{item.quantity > 1 ? ` · used for all ${item.quantity} pieces` : ''}
+                </p>
+                {sections.map((section) => (
+                  <div key={section.title} className="mb-4">
+                    <p className="text-xs uppercase tracking-wide text-ink/40 mb-2">{section.title}</p>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {section.fields.map((f) => (
+                        <div key={f.key}>
+                          <label className="text-xs text-ink/60 block mb-1">{f.label}</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={itemValues[item.id]?.[f.key] ?? ''}
+                            onChange={(e) =>
+                              setItemValues((v) => ({
+                                ...v,
+                                [item.id]: { ...(v[item.id] || {}), [f.key]: e.target.value }
+                              }))
+                            }
+                            className="border border-sand px-3 py-2 text-sm w-full"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })}
           <textarea
             placeholder="Anything else we should know? (optional)"
-            value={measurements.notes || ''}
-            onChange={(e) => setMeasurements((m) => ({ ...m, notes: e.target.value }))}
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             className="border border-sand px-3 py-2 text-sm w-full mb-6"
             rows={3}
           />
