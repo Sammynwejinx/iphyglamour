@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import { MEASUREMENT_FIELDS, DEFAULT_MEASUREMENT_KEYS } from '@/lib/measurementFields';
+import { MEASUREMENT_TYPES, DEFAULT_MEASUREMENT_KEYS, keysForType, typeIdForKeys } from '@/lib/measurementFields';
 
 function slugify(text) {
   return text
@@ -47,12 +47,10 @@ export default function ProductForm({ initialProduct }) {
     setForm((f) => ({ ...f, [field]: value, ...(field === 'name' && !isEdit ? { slug: slugify(value) } : {}) }));
   }
 
-  function toggleMeasurementField(key) {
-    setForm((f) => {
-      const current = f.measurement_fields || [];
-      const next = current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
-      return { ...f, measurement_fields: next };
-    });
+  const measurementType = typeIdForKeys(form.measurement_fields);
+
+  function chooseMeasurementType(typeId) {
+    setForm((f) => ({ ...f, measurement_fields: keysForType(typeId) }));
   }
 
   async function handleSubmit(e) {
@@ -106,17 +104,20 @@ export default function ProductForm({ initialProduct }) {
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4 max-w-lg">
+      <a href="/admin/products" className="text-xs text-ink/50 hover:text-magenta">
+        ← Back to products
+      </a>
       <input
         required
         placeholder="Product name"
-        value={form.name}
+        value={form.name ?? ''}
         onChange={(e) => update('name', e.target.value)}
         className="border border-sand px-3 py-2 text-sm"
       />
       <input
         required
         placeholder="Slug (URL)"
-        value={form.slug}
+        value={form.slug ?? ''}
         onChange={(e) => update('slug', e.target.value)}
         className="border border-sand px-3 py-2 text-sm"
       />
@@ -124,7 +125,7 @@ export default function ProductForm({ initialProduct }) {
         required
         type="number"
         placeholder="Price (₦)"
-        value={form.price}
+        value={form.price ?? ''}
         onChange={(e) => update('price', e.target.value)}
         className="border border-sand px-3 py-2 text-sm"
       />
@@ -134,12 +135,12 @@ export default function ProductForm({ initialProduct }) {
         <input
           list="collection-options"
           placeholder="e.g. Long Dresses"
-          value={form.category}
+          value={form.category ?? ''}
           onChange={(e) => update('category', e.target.value)}
           className="border border-sand px-3 py-2 text-sm w-full"
         />
         <datalist id="collection-options">
-          {collections.map((c) => (
+          {(collections || []).map((c) => (
             <option key={c.name} value={c.name} />
           ))}
         </datalist>
@@ -154,13 +155,13 @@ export default function ProductForm({ initialProduct }) {
 
       <input
         placeholder="Fabric"
-        value={form.fabric}
+        value={form.fabric ?? ''}
         onChange={(e) => update('fabric', e.target.value)}
         className="border border-sand px-3 py-2 text-sm"
       />
       <textarea
         placeholder="Description"
-        value={form.description}
+        value={form.description ?? ''}
         onChange={(e) => update('description', e.target.value)}
         className="border border-sand px-3 py-2 text-sm"
         rows={4}
@@ -182,24 +183,33 @@ export default function ProductForm({ initialProduct }) {
 
       <div>
         <label className="text-xs text-ink/60 block mb-2">
-          Which measurements does this piece need? (shown to the customer at checkout)
+          What type of piece is this? The customer fills in the measurements for this type at checkout.
         </label>
-        <div className="grid grid-cols-2 gap-2">
-          {MEASUREMENT_FIELDS.map((f) => (
-            <label key={f.key} className="flex items-center gap-2 text-sm">
+        <div className="grid gap-2">
+          {(MEASUREMENT_TYPES || []).map((t) => (
+            <label key={t.id} className="flex items-start gap-3 border border-sand p-3 text-sm cursor-pointer">
               <input
-                type="checkbox"
-                checked={(form.measurement_fields || []).includes(f.key)}
-                onChange={() => toggleMeasurementField(f.key)}
+                type="radio"
+                name="measurement_type"
+                className="mt-1"
+                checked={measurementType === t.id}
+                onChange={() => chooseMeasurementType(t.id)}
               />
-              {f.label}
+              <span>
+                <span className="block text-ink">{t.name}</span>
+                {(t.sections || []).map((s) => (
+                  <span key={s.title} className="block text-xs text-ink/50 mt-1">
+                    {s.title}: {(s.fields || []).map((f) => f.label).join(', ')}
+                  </span>
+                ))}
+              </span>
             </label>
           ))}
         </div>
       </div>
 
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={form.available} onChange={(e) => update('available', e.target.checked)} />
+        <input type="checkbox" checked={Boolean(form.available)} onChange={(e) => update('available', e.target.checked)} />
         Available on the site
       </label>
 
