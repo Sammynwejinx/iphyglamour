@@ -31,13 +31,26 @@ export default function CartPage() {
               <p className="text-sm text-ink/60">{formatNaira(item.price)} each</p>
             </div>
             <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="1"
-                value={item.quantity}
-                onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
-                className="w-14 border border-sand px-2 py-1 text-sm"
-              />
+              <div className="flex items-center border border-sand">
+                <button
+                  type="button"
+                  aria-label="Decrease quantity"
+                  onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                  disabled={item.quantity <= 1}
+                  className="w-9 h-9 text-lg text-ink/70 hover:text-magenta disabled:opacity-30"
+                >
+                  -
+                </button>
+                <span className="w-10 text-center text-sm text-ink">{item.quantity}</span>
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                  className="w-9 h-9 text-lg text-ink/70 hover:text-magenta"
+                >
+                  +
+                </button>
+              </div>
               <button onClick={() => removeItem(item.id)} className="text-xs text-ink/50 hover:text-magenta">
                 Remove
               </button>
