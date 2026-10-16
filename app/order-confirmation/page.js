@@ -87,6 +87,22 @@ function Confirmation() {
         </div>
       )}
 
+      {status === 'appointment_requested' && (
+        <div className="border border-sand p-6 mb-6">
+          <p className="font-display text-lg text-ink mb-2">Next: book your appointment</p>
+          <p className="text-sm text-ink/70 mb-4">
+            Please call us to agree a date and time for your measurements. Appointments are on Tuesdays and Fridays.
+          </p>
+          <a
+            href="tel:+2348033457024"
+            className="inline-block bg-ink text-porcelain px-6 py-3 text-sm hover:bg-magenta transition-colors"
+          >
+            Call Us to Book an Appointment
+          </a>
+          <p className="text-xs text-ink/50 mt-3">0803 345 7024</p>
+        </div>
+      )}
+
       <div className="text-left border border-sand p-6">
         <p className="font-display text-lg text-ink mb-3">What&apos;s next?</p>
         <ol className="text-sm text-ink/70 space-y-2 list-decimal list-inside">

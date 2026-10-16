@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/cartContext';
 import { formatNaira } from '@/lib/placeholderProducts';
-import { createOrder, saveMeasurements, saveAppointment } from '@/lib/orders';
+import { createOrder, saveMeasurements } from '@/lib/orders';
 import { sectionsForItem } from '@/lib/measurementFields';
 
 const DELIVERY_FEE = 15000;
@@ -15,7 +15,6 @@ export default function MeasurementsPage() {
 
   const [path, setPath] = useState(null); // 'measurements' | 'appointment' | 'whatsapp'
   const [measurementStep, setMeasurementStep] = useState('form'); // 'form' | 'details'
-  const [apptType, setApptType] = useState(null); // 'home' | 'shop'
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -23,7 +22,7 @@ export default function MeasurementsPage() {
 
   const [itemValues, setItemValues] = useState({}); // { [productId]: { [measurementKey]: value } }
   const [notes, setNotes] = useState('');
-  const [appointment, setAppointment] = useState({ address: '', preferred_date: '', preferred_time: '', notes: '' });
+  const [apptEmail, setApptEmail] = useState('');
   const [shipping, setShipping] = useState({
     email: '',
     country: '',
@@ -112,13 +111,19 @@ export default function MeasurementsPage() {
     setSubmitting(true);
     setOrderError(null);
     try {
-      const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'appointment_requested' });
-      await saveAppointment(orderNumber, { type: apptType, customer_name: customerName, phone, ...appointment });
+      const orderNumber = await createOrder({
+        items,
+        total,
+        customerName,
+        phone,
+        email: apptEmail,
+        measurementStatus: 'appointment_requested'
+      });
       clearCart();
       router.push(`/order-confirmation?order=${orderNumber}&status=appointment_requested`);
     } catch (err) {
       setSubmitting(false);
-      setOrderError('Something went wrong saving your request. Please try again.');
+      setOrderError('Something went wrong saving your order. Please try again.');
     }
   }
 
@@ -168,7 +173,7 @@ export default function MeasurementsPage() {
             className="text-left border border-sand p-5 hover:border-magenta transition-colors"
           >
             <p className="font-display text-lg text-ink">I need help with my measurements</p>
-            <p className="text-sm text-ink/60 mt-1">Book a measurement appointment with IPHYGLAMOUR.</p>
+            <p className="text-sm text-ink/60 mt-1">Call us to arrange a measurement appointment.</p>
           </button>
           <button
             onClick={() => setPath('whatsapp')}
@@ -345,36 +350,30 @@ export default function MeasurementsPage() {
         </form>
       )}
 
-      {path === 'appointment' && !apptType && (
-        <div>
+      {path === 'appointment' && (
+        <form onSubmit={finishWithAppointment} className="mt-2">
           <button type="button" onClick={() => setPath(null)} className="text-xs text-ink/50 mb-6 hover:text-magenta">
             ← Back
           </button>
-          <p className="text-ink/70 mb-6">
-            Don&apos;t have your measurements? No problem — book a measurement appointment with IPHYGLAMOUR.
-          </p>
-          <div className="grid gap-4">
-            <button
-              onClick={() => setApptType('home')}
-              className="text-left border border-sand p-5 hover:border-magenta transition-colors"
-            >
-              Have IPHYGLAMOUR come to me
-            </button>
-            <button
-              onClick={() => setApptType('shop')}
-              className="text-left border border-sand p-5 hover:border-magenta transition-colors"
-            >
-              I&apos;ll visit the IPHYGLAMOUR shop
-            </button>
-          </div>
-        </div>
-      )}
 
-      {path === 'appointment' && apptType && (
-        <form onSubmit={finishWithAppointment} className="mt-2">
-          <button type="button" onClick={() => setApptType(null)} className="text-xs text-ink/50 mb-6 hover:text-magenta">
-            ← Back
-          </button>
+          <div className="border border-sand p-5 mb-8 text-center">
+            <p className="font-display text-lg text-ink mb-1">Call us to book your measurement appointment</p>
+            <p className="text-sm text-ink/60 mb-4">
+              We&apos;ll agree a date and time with you on the phone. Appointments are on Tuesdays and Fridays.
+            </p>
+            <a
+              href="tel:+2348033457024"
+              className="inline-block bg-ink text-porcelain px-6 py-3 text-sm hover:bg-magenta transition-colors"
+            >
+              Call Us to Book an Appointment
+            </a>
+            <p className="text-xs text-ink/50 mt-3">0803 345 7024</p>
+          </div>
+
+          <p className="text-sm text-ink/70 mb-4">
+            Place your order now so we know which piece you would like. We&apos;ll take your measurements at your
+            appointment.
+          </p>
           <div className="grid gap-4 mb-6">
             <input
               required
@@ -390,47 +389,20 @@ export default function MeasurementsPage() {
               onChange={(e) => setPhone(e.target.value)}
               className="border border-sand px-3 py-2 text-sm"
             />
-            {apptType === 'home' && (
-              <input
-                required
-                placeholder="Address / location"
-                value={appointment.address}
-                onChange={(e) => setAppointment((a) => ({ ...a, address: e.target.value }))}
-                className="border border-sand px-3 py-2 text-sm"
-              />
-            )}
-            <div className="grid grid-cols-2 gap-4">
-              <input
-                required
-                type="date"
-                value={appointment.preferred_date}
-                onChange={(e) => setAppointment((a) => ({ ...a, preferred_date: e.target.value }))}
-                className="border border-sand px-3 py-2 text-sm"
-              />
-              <input
-                required
-                type="time"
-                value={appointment.preferred_time}
-                onChange={(e) => setAppointment((a) => ({ ...a, preferred_time: e.target.value }))}
-                className="border border-sand px-3 py-2 text-sm"
-              />
-            </div>
-            <textarea
-              placeholder="Additional notes (optional)"
-              value={appointment.notes}
-              onChange={(e) => setAppointment((a) => ({ ...a, notes: e.target.value }))}
+            <input
+              required
+              type="email"
+              placeholder="Email address"
+              value={apptEmail}
+              onChange={(e) => setApptEmail(e.target.value)}
               className="border border-sand px-3 py-2 text-sm"
-              rows={3}
             />
           </div>
-          <p className="text-xs text-ink/50 mb-4">
-            This is a request — IPHYGLAMOUR will confirm your appointment time by phone or WhatsApp.
-          </p>
           <button
             disabled={submitting}
             className="bg-ink text-porcelain px-6 py-3 text-sm hover:bg-magenta transition-colors disabled:opacity-50"
           >
-            {submitting ? 'Submitting…' : 'Request appointment'}
+            {submitting ? 'Submitting…' : 'Place my order'}
           </button>
         </form>
       )}
