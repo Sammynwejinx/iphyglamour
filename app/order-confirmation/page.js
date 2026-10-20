@@ -8,8 +8,14 @@ import { formatNaira } from '@/lib/placeholderProducts';
 
 const STATUS_COPY = {
   measurement_received: 'Payment status: Pending',
-  appointment_requested: 'Measurement status: Appointment requested',
-  chat_pending: 'Measurement status: Awaiting WhatsApp conversation'
+  appointment_requested: 'Your details are saved. Your order is not confirmed yet.',
+  chat_pending: 'Your details are saved. Your order is not confirmed until we agree the details on WhatsApp.'
+};
+
+const HEADING = {
+  measurement_received: 'Order received',
+  appointment_requested: 'Details received',
+  chat_pending: 'Enquiry received'
 };
 
 function Confirmation() {
@@ -37,9 +43,11 @@ function Confirmation() {
 
   return (
     <div className="max-w-xl mx-auto px-5 py-16 text-center">
-      <h1 className="font-display text-3xl text-ink mb-3">Order received</h1>
+      <h1 className="font-display text-3xl text-ink mb-3">{HEADING[status] || HEADING.measurement_received}</h1>
       <p className="text-ink/70 mb-1">Thank you for choosing IPHYGLAMOUR.</p>
-      <p className="font-display text-2xl text-magenta my-4">#{order}</p>
+      <p className="font-display text-2xl text-magenta my-4">
+        {status === 'measurement_received' ? '' : 'Reference '}#{order}
+      </p>
       <p className="text-sm text-ink/60 mb-10">{STATUS_COPY[status] || STATUS_COPY.measurement_received}</p>
 
       {status === 'measurement_received' && total && (
@@ -103,13 +111,41 @@ function Confirmation() {
         </div>
       )}
 
+      {status === 'chat_pending' && (
+        <div className="border border-sand p-6 mb-6">
+          <p className="font-display text-lg text-ink mb-2">Chat with us on WhatsApp</p>
+          <p className="text-sm text-ink/70 mb-4">If WhatsApp did not open, tap the button below.</p>
+          <a
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2340000000000'}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block bg-magenta text-white px-6 py-3 text-sm hover:bg-magentadeep transition-colors"
+          >
+            Chat on WhatsApp
+          </a>
+        </div>
+      )}
+
       <div className="text-left border border-sand p-6">
         <p className="font-display text-lg text-ink mb-3">What&apos;s next?</p>
-        <ol className="text-sm text-ink/70 space-y-2 list-decimal list-inside">
-          <li>We&apos;ll review your order and measurement details.</li>
-          <li>If you booked an appointment, we&apos;ll confirm the time with you by phone or WhatsApp.</li>
-          <li>Once payment is confirmed, your piece goes into production.</li>
-        </ol>
+        {status === 'appointment_requested' ? (
+          <ol className="text-sm text-ink/70 space-y-2 list-decimal list-inside">
+            <li>Call us to agree a date and time for your measurements.</li>
+            <li>Once your appointment is confirmed, we&apos;ll email you the date and time, and remind you before it.</li>
+            <li>After your appointment, we&apos;ll confirm your order and send you the payment details.</li>
+          </ol>
+        ) : status === 'chat_pending' ? (
+          <ol className="text-sm text-ink/70 space-y-2 list-decimal list-inside">
+            <li>Chat with us on WhatsApp to agree your measurements and the final details.</li>
+            <li>Once you decide to go ahead, we&apos;ll confirm your order and email you the payment details.</li>
+            <li>After your payment is confirmed, your piece goes into production.</li>
+          </ol>
+        ) : (
+          <ol className="text-sm text-ink/70 space-y-2 list-decimal list-inside">
+            <li>We&apos;ll review your order and measurement details.</li>
+            <li>Once payment is confirmed, your piece goes into production.</li>
+          </ol>
+        )}
       </div>
 
       <Link href="/shop" className="inline-block mt-10 text-sm text-magenta hover:text-magentadeep">

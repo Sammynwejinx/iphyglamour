@@ -23,6 +23,14 @@ export default function MeasurementsPage() {
   const [itemValues, setItemValues] = useState({}); // { [productId]: { [measurementKey]: value } }
   const [notes, setNotes] = useState('');
   const [apptEmail, setApptEmail] = useState('');
+  const [wa, setWa] = useState({
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    country: '',
+    postalCode: ''
+  });
   const [shipping, setShipping] = useState({
     email: '',
     country: '',
@@ -117,7 +125,8 @@ export default function MeasurementsPage() {
         customerName,
         phone,
         email: apptEmail,
-        measurementStatus: 'appointment_requested'
+        measurementStatus: 'appointment_requested',
+        source: 'appointment'
       });
       clearCart();
       router.push(`/order-confirmation?order=${orderNumber}&status=appointment_requested`);
@@ -127,26 +136,58 @@ export default function MeasurementsPage() {
     }
   }
 
-  async function finishWithWhatsApp() {
+  const waComplete =
+    customerName.trim() &&
+    phone.trim() &&
+    wa.email.includes('@') &&
+    wa.address.trim() &&
+    wa.city.trim() &&
+    wa.state.trim() &&
+    wa.country.trim() &&
+    wa.postalCode.trim();
+
+  async function finishWithWhatsApp(e) {
+    e.preventDefault();
+    if (!waComplete) return;
     setSubmitting(true);
     setOrderError(null);
+    // Open the tab straight away so phone browsers do not block it
+    const waWindow = window.open('', '_blank');
     try {
-      const orderNumber = await createOrder({ items, total, customerName, phone, measurementStatus: 'chat_pending' });
+      const orderNumber = await createOrder({
+        items,
+        total,
+        customerName,
+        phone,
+        email: wa.email,
+        country: wa.country,
+        state: wa.state,
+        city: wa.city,
+        address: wa.address,
+        postalCode: wa.postalCode,
+        measurementStatus: 'chat_pending',
+        source: 'whatsapp'
+      });
       const number = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '2340000000000';
       const lines = [
-        `Hello IPHYGLAMOUR, I just placed an order.`,
-        `Order #: ${orderNumber}`,
+        `Hello IPHYGLAMOUR, I would like to discuss an order.`,
+        `Reference: ${orderNumber}`,
         ...items.map((i) => `${i.name} x${i.quantity} — ${formatNaira(i.price * i.quantity)}`),
         `Total: ${formatNaira(total)}`,
-        `I would like to discuss my measurements.`
+        `My name: ${customerName}`
       ];
       const url = `https://wa.me/${number}?text=${encodeURIComponent(lines.join('\n'))}`;
       clearCart();
-      window.open(url, '_blank');
+      if (waWindow) {
+        waWindow.location.href = url;
+      } else {
+        window.open(url, '_blank');
+      }
       router.push(`/order-confirmation?order=${orderNumber}&status=chat_pending`);
     } catch (err) {
+      if (waWindow) waWindow.close();
       setSubmitting(false);
-      setOrderError('Something went wrong. Please try again.');
+      setOrderError('Something went wrong saving your details. Please try again.');
     }
   }
 
@@ -371,8 +412,8 @@ export default function MeasurementsPage() {
           </div>
 
           <p className="text-sm text-ink/70 mb-4">
-            Place your order now so we know which piece you would like. We&apos;ll take your measurements at your
-            appointment.
+            Save your details so Ify has them when you call. This does not place or confirm an order — it is confirmed
+            only after your appointment.
           </p>
           <div className="grid gap-4 mb-6">
             <input
@@ -402,27 +443,95 @@ export default function MeasurementsPage() {
             disabled={submitting}
             className="bg-ink text-porcelain px-6 py-3 text-sm hover:bg-magenta transition-colors disabled:opacity-50"
           >
-            {submitting ? 'Submitting…' : 'Place my order'}
+            {submitting ? 'Saving…' : 'Save my details'}
           </button>
         </form>
       )}
 
       {path === 'whatsapp' && (
-        <div>
+        <form onSubmit={finishWithWhatsApp} className="mt-2">
           <button type="button" onClick={() => setPath(null)} className="text-xs text-ink/50 mb-6 hover:text-magenta">
             ← Back
           </button>
           <p className="text-ink/70 mb-6">
-            We&apos;ll open WhatsApp with your order details filled in — just hit send.
+            Fill in your details below. Then we&apos;ll open WhatsApp so you can chat with us. Your order is only
+            confirmed after we agree the details with you.
           </p>
-          <button
-            onClick={finishWithWhatsApp}
-            disabled={submitting}
-            className="bg-magenta text-white px-6 py-3 text-sm hover:bg-magentadeep transition-colors disabled:opacity-50"
-          >
-            {submitting ? 'Preparing…' : 'Chat on WhatsApp'}
-          </button>
-        </div>
+          <div className="grid gap-4 mb-6">
+            <input
+              required
+              placeholder="Your name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              className="border border-sand px-3 py-2 text-sm"
+            />
+            <input
+              required
+              placeholder="Phone number"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="border border-sand px-3 py-2 text-sm"
+            />
+            <input
+              required
+              type="email"
+              placeholder="Email address"
+              value={wa.email}
+              onChange={(e) => setWa((w) => ({ ...w, email: e.target.value }))}
+              className="border border-sand px-3 py-2 text-sm"
+            />
+            <textarea
+              required
+              placeholder="House address"
+              value={wa.address}
+              onChange={(e) => setWa((w) => ({ ...w, address: e.target.value }))}
+              className="border border-sand px-3 py-2 text-sm"
+              rows={2}
+            />
+            <div className="grid sm:grid-cols-2 gap-4">
+              <input
+                required
+                placeholder="City"
+                value={wa.city}
+                onChange={(e) => setWa((w) => ({ ...w, city: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+              <input
+                required
+                placeholder="State / Province"
+                value={wa.state}
+                onChange={(e) => setWa((w) => ({ ...w, state: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <input
+                required
+                placeholder="Country"
+                value={wa.country}
+                onChange={(e) => setWa((w) => ({ ...w, country: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+              <input
+                required
+                placeholder="Zip / Postal code"
+                value={wa.postalCode}
+                onChange={(e) => setWa((w) => ({ ...w, postalCode: e.target.value }))}
+                className="border border-sand px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          {waComplete ? (
+            <button
+              disabled={submitting}
+              className="bg-magenta text-white px-6 py-3 text-sm hover:bg-magentadeep transition-colors disabled:opacity-50"
+            >
+              {submitting ? 'Opening WhatsApp…' : 'Chat on WhatsApp'}
+            </button>
+          ) : (
+            <p className="text-xs text-ink/50">Fill in every field above and the WhatsApp button will appear.</p>
+          )}
+        </form>
       )}
     </div>
   );
