@@ -129,6 +129,14 @@ export async function POST(request) {
   const { data: order, error: findError } = await db.from('orders').select('*').eq('id', orderId).single();
   if (findError || !order) return Response.json({ ok: false, error: 'Order not found' }, { status: 404 });
 
+  // A pending enquiry is not an order yet: no payment or status emails may be sent for it
+  if (!order.confirmed_at) {
+    return Response.json(
+      { ok: false, error: 'This is a pending enquiry, not a confirmed order. It cannot be updated or emailed yet.' },
+      { status: 400 }
+    );
+  }
+
   let update = {};
   let emailType = null;
 

@@ -160,13 +160,21 @@ export default function AdminOrdersPage() {
       <div className="grid gap-4">
         {orders?.map((o) => {
           const paymentConfirmed = o.payment_status === 'Confirmed';
+          const isEnquiry = o.confirmed_at == null;
           const hasShipping = o.email || o.address || o.country;
           const mRow = measurements[o.id];
 
           return (
             <div key={o.id} className="border border-sand p-4 text-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <p className="font-display text-ink">{o.order_number}</p>
+                <p className="font-display text-ink">
+                  {o.order_number}
+                  {isEnquiry && (
+                    <span className="ml-2 inline-block text-xs px-2 py-1 rounded-full bg-sand text-ink/70 font-body">
+                      Pending enquiry
+                    </span>
+                  )}
+                </p>
                 <span className="text-xs text-ink/40">
                   {o.created_at ? new Date(o.created_at).toLocaleString() : ''}
                 </span>
@@ -216,6 +224,13 @@ export default function AdminOrdersPage() {
               {/* Measurement status */}
               <p className="text-ink/50 text-xs mb-3">Measurement status: {o.measurement_status}</p>
 
+              {isEnquiry ? (
+                <div className="border-t border-sand pt-3 text-xs text-ink/60">
+                  This is a pending enquiry, not a confirmed order yet. Payment and status updates (and their emails)
+                  are switched off until it is confirmed.
+                </div>
+              ) : (
+                <>
               {/* Payment */}
               <div className="border-t border-sand pt-3 mb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -271,6 +286,8 @@ export default function AdminOrdersPage() {
                   ))}
                 </select>
               </div>
+                </>
+              )}
             </div>
           );
         })}
